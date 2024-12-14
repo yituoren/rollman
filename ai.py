@@ -1,5 +1,5 @@
 from core.gamedata import *
-
+import sys
 
 example_gamestate = GameState(
     level=1,
@@ -7,8 +7,8 @@ example_gamestate = GameState(
     pacman_score=0,
     ghosts_score=0,
     pacman_skill_status=[0, 0, 0, 0],
-    pacman_pos=[36, 1],
-    ghosts_pos=[[36, 36], [1, 1], [1, 36]],
+    pacman_pos=np.array([36, 1]),
+    ghosts_pos=np.array([np.array([36, 36]), np.array([1, 36]), np.array([1, 1])]),
     board_size=38,
     board=[
         [
@@ -1533,7 +1533,7 @@ example_gamestate = GameState(
         ],
     ],
     portal_available=False,
-    portal_coord=[20, 20],
+    portal_coord=np.array([20, 20]),
 )
 
 import random
@@ -1541,7 +1541,19 @@ from typing import List
 from collections import deque
 import numpy as np
 
-
+def parse(x: tuple):
+    if x == (0, 0):
+        return Direction.STAY.value
+    if x == (1, 0):
+        return Direction.UP.value
+    if x == (-1, 0):
+        return Direction.DOWN.value
+    if x == (0, 1):
+        return Direction.RIGHT.value
+    if x == (0, -1):
+        return Direction.LEFT.value
+    
+    
 class GhostAI:
     def __init__(self):
         self.position_history = {0: [], 1: [], 2: []}
@@ -1569,6 +1581,40 @@ class GhostAI:
                 valid_moves.append((new_pos, move_value))
         return valid_moves
 
+    def a_star_search(self, start: np.ndarray, goal: np.ndarray, game_state: GameState):
+        open_set = set()
+        open_set.add(tuple(start))
+        came_from = {}
+
+        g_score = {tuple(start): 0}
+        f_score = {tuple(start): self.manhattan_distance(start, goal)}
+
+        while open_set:
+            current = min(open_set, key=lambda x: f_score.get(x, float("inf")))
+            if current == tuple(goal):
+                path = []
+                while current in came_from:
+                    path.append(current)
+                    current = came_from[current]
+                path.reverse()
+                return path
+
+            open_set.remove(current)
+            for direction, _ in self.get_valid_moves(list(current), game_state):
+                neighbor = tuple(direction)
+                tentative_g_score = g_score[current] + 1
+
+                if tentative_g_score < g_score.get(neighbor, float("inf")):
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    f_score[neighbor] = tentative_g_score + self.manhattan_distance(
+                        neighbor, goal
+                    )
+                    if neighbor not in open_set:
+                        open_set.add(neighbor)
+
+        return []
+
     def calculate_stagnation_penalty(self, new_pos, ghost_id):
         if not self.position_history[ghost_id]:
             return 0
@@ -1584,7 +1630,7 @@ class GhostAI:
         if len(self.position_history[ghost_id]) > self.history_length:
             self.position_history[ghost_id].pop(0)
 
-    def choose_moves(self, game_state):
+    def choose_moves(self, game_state: GameState):
         moves = []
         pacman_pos = game_state.pacman_pos
 
@@ -1593,23 +1639,24 @@ class GhostAI:
             valid_moves = self.get_valid_moves(current_pos, game_state)
 
             if not valid_moves:
-                moves.append(0)
+                moves.append(Direction.STAY.value)
                 continue
 
             # 计算到吃豆人的距离
-            distance_to_pacman = self.manhattan_distance(current_pos, pacman_pos)
+            a_star_path = self.a_star_search(current_pos, pacman_pos, game_state)
+            distance_to_pacman = len(a_star_path) if a_star_path else float("inf")
 
-            # 如果距离很近（比如小于3），直接追击
-            if distance_to_pacman <= 3:
-                best_move = min(
-                    valid_moves, key=lambda x: self.manhattan_distance(x[0], pacman_pos)
-                )
+            # 如果距离很近（比如小于5），直接追击
+            if distance_to_pacman <= 5:
+                best_move = tuple(a_star_path[0], parse((a_star_path[0][0] - current_pos[0], a_star_path[0][1] - current_pos[1])))
             else:
                 # 距离较远时使用更复杂的策略
                 target_pos = pacman_pos
-
                 # 不同幽灵的策略
-                if ghost_id == 1 and distance_to_pacman > 4:
+                if ghost_id == 0:
+                    # 通过A*寻路算法直接追击
+                    pass
+                elif ghost_id == 1:
                     # 预测吃豆人移动方向
                     dx = pacman_pos[0] - current_pos[0]
                     dy = pacman_pos[1] - current_pos[1]
@@ -1621,8 +1668,7 @@ class GhostAI:
                         and game_state.board[predicted_x][predicted_y] != 0
                     ):
                         target_pos = [predicted_x, predicted_y]
-
-                elif ghost_id == 2 and distance_to_pacman > 4:
+                else:
                     # 尝试切断路线
                     other_ghost = game_state.ghosts_pos[0]  # 使用第一个幽灵作为参考
                     dx = pacman_pos[0] - other_ghost[0]
@@ -1634,19 +1680,15 @@ class GhostAI:
                     if game_state.board[intercept_x][intercept_y] != 0:
                         target_pos = [intercept_x, intercept_y]
 
-                best_move = min(
-                    valid_moves,
-                    key=lambda x: (
-                        self.manhattan_distance(x[0], target_pos)
-                        + sum(
-                            1
-                            for other_ghost in game_state.ghosts_pos[:ghost_id]
-                            if self.manhattan_distance(x[0], other_ghost) == 0
-                        )
-                        * 3  # 只检查序号更小的幽灵
-                        + self.calculate_stagnation_penalty(x[0], ghost_id)
-                    ),
-                )
+                path = self.a_star_search(current_pos, target_pos, game_state)
+                
+                if path:
+                    best_move = (path[0], parse((path[0][0] - current_pos[0], path[0][1] - current_pos[1])))
+                else:
+                    best_move = min(
+                        valid_moves,
+                        key=lambda x: self.manhattan_distance(x[0], pacman_pos),
+                    )
 
             self.update_history(ghost_id, best_move[0])
             moves.append(best_move[1])
@@ -1655,5 +1697,5 @@ class GhostAI:
 
 
 ai_func = GhostAI().choose_moves
-#print(ai_func(example_gamestate))
+# print(ai_func(example_gamestate))
 __all__ = ["ai_func"]
