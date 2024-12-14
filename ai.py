@@ -1532,6 +1532,8 @@ example_gamestate = GameState(
             0,
         ],
     ],
+    portal_available=False,
+    portal_coord=[20, 20],
 )
 
 import random
@@ -1653,5 +1655,5 @@ class GhostAI:
 
 
 ai_func = GhostAI().choose_moves
-# print(ai_func(example_gamestate))
+#print(ai_func(example_gamestate))
 __all__ = ["ai_func"]
