@@ -1,5 +1,6 @@
 from core.gamedata import *
 import sys
+import random
 
 example_gamestate = GameState(
     level=1,
@@ -1541,6 +1542,7 @@ from typing import List
 from collections import deque
 import numpy as np
 
+
 def parse(x: tuple):
     if x == (0, 0):
         return Direction.STAY.value
@@ -1552,8 +1554,8 @@ def parse(x: tuple):
         return Direction.RIGHT.value
     if x == (0, -1):
         return Direction.LEFT.value
-    
-    
+
+
 class GhostAI:
     def __init__(self):
         self.position_history = {0: [], 1: [], 2: []}
@@ -1646,9 +1648,17 @@ class GhostAI:
             a_star_path = self.a_star_search(current_pos, pacman_pos, game_state)
             distance_to_pacman = len(a_star_path) if a_star_path else float("inf")
 
-            # 如果距离很近（比如小于5），直接追击
-            if distance_to_pacman <= 5:
-                best_move = tuple(a_star_path[0], parse((a_star_path[0][0] - current_pos[0], a_star_path[0][1] - current_pos[1])))
+            # 如果距离很近（比如小于3），直接追击
+            if distance_to_pacman <= 3:
+                best_move = (
+                    a_star_path[0],
+                    parse(
+                        (
+                            a_star_path[0][0] - current_pos[0],
+                            a_star_path[0][1] - current_pos[1],
+                        )
+                    ),
+                )
             else:
                 # 距离较远时使用更复杂的策略
                 target_pos = pacman_pos
@@ -1657,6 +1667,15 @@ class GhostAI:
                     # 通过A*寻路算法直接追击
                     pass
                 elif ghost_id == 1:
+                    if (
+                        current_pos[0] == game_state.ghosts_pos[0][0]
+                        and current_pos[1] == game_state.ghosts_pos[0][1]
+                    ):
+                        # 第二个幽灵与第一个幽灵重合时，随机移动
+                        best_move = random.choice(valid_moves)
+                        self.update_history(ghost_id, best_move[0])
+                        moves.append(best_move[1])
+                        continue
                     # 预测吃豆人移动方向
                     dx = pacman_pos[0] - current_pos[0]
                     dy = pacman_pos[1] - current_pos[1]
@@ -1669,6 +1688,19 @@ class GhostAI:
                     ):
                         target_pos = [predicted_x, predicted_y]
                 else:
+                    if (
+                        current_pos[0] == game_state.ghosts_pos[0][0]
+                        and current_pos[1] == game_state.ghosts_pos[0][1]
+                    ) or (
+                        current_pos[0] == game_state.ghosts_pos[1][0]
+                        and current_pos[1] == game_state.ghosts_pos[1][1]
+                    ):
+
+                        # 第三个幽灵与第一个或第二个幽灵重合时，随机移动
+                        best_move = random.choice(valid_moves)
+                        self.update_history(ghost_id, best_move[0])
+                        moves.append(best_move[1])
+                        continue
                     # 尝试切断路线
                     other_ghost = game_state.ghosts_pos[0]  # 使用第一个幽灵作为参考
                     dx = pacman_pos[0] - other_ghost[0]
@@ -1681,9 +1713,14 @@ class GhostAI:
                         target_pos = [intercept_x, intercept_y]
 
                 path = self.a_star_search(current_pos, target_pos, game_state)
-                
+
                 if path:
-                    best_move = (path[0], parse((path[0][0] - current_pos[0], path[0][1] - current_pos[1])))
+                    best_move = (
+                        path[0],
+                        parse(
+                            (path[0][0] - current_pos[0], path[0][1] - current_pos[1])
+                        ),
+                    )
                 else:
                     best_move = min(
                         valid_moves,
