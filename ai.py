@@ -1648,7 +1648,7 @@ class GhostAI:
 
             # 如果距离很近（比如小于5），直接追击
             if distance_to_pacman <= 5:
-                best_move = tuple(a_star_path[0], parse((a_star_path[0][0] - current_pos[0], a_star_path[0][1] - current_pos[1])))
+                best_move = (a_star_path[0], parse((a_star_path[0][0] - current_pos[0], a_star_path[0][1] - current_pos[1])))
             else:
                 # 距离较远时使用更复杂的策略
                 target_pos = pacman_pos
