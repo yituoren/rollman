@@ -38,7 +38,7 @@ class Controller:
                 # 0号玩家发送信息
                 ghosts_op(self.env,ai)
                 
-                # 1号玩家发送信息
+                # 等待1号玩家发送信息
                 get_info = input()
                 print(f"receive info: {get_info}", file=sys.stderr)
 
@@ -52,7 +52,7 @@ class Controller:
             else:
                 #当前为1号玩家
 
-                # 0号玩家发送信息
+                # 等待0号玩家发送信息
                 get_info = input()
                 print(f"receive info: {get_info}", file=sys.stderr)
                 
