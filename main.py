@@ -48,7 +48,7 @@ class Controller:
                 get_op_json = json.loads(get_op)
                 pacman_action = get_op_json["pacman_action"]
                 ghosts_action = get_op_json["ghosts_action"]
-                self.level_change , self.eat_all_beans = self.env.step(pacman_action,ghosts_action)
+                info , pacman_reward , ghosts_reward , self.level_change , self.eat_all_beans = self.env.step(pacman_action,ghosts_action)
             else:
                 #当前为1号玩家
 
@@ -65,7 +65,7 @@ class Controller:
                 get_op_json = json.loads(get_op)
                 pacman_action = get_op_json["pacman_action"]
                 ghosts_action = get_op_json["ghosts_action"]
-                self.level_change , self.eat_all_beans = self.env.step(pacman_action,ghosts_action)
+                info , pacman_reward , ghosts_reward , self.level_change , self.eat_all_beans = self.env.step(pacman_action,ghosts_action)
 
 
 if __name__ == "__main__":
