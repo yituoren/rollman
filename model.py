@@ -98,5 +98,5 @@ class GhostNet(nn.Module):
         x = F.relu(self.fc1(x))
         policy = F.softmax(self.policy(x), dim=1)
         value = F.relu(self.value1(x))
-        value = self.value2(x)
+        value = self.value2(value)
         return policy, value
