@@ -309,11 +309,11 @@ def train():
 
     env = PacmanEnv("local")
     pacman = PacmanPPO(lr, lmbda_pacman, epochs, eps, gamma, device, input_channel_num=4, num_actions=5, extra_info_dim=10)
-    # ghost = GhostPPO(lr, lmbda_ghost, epochs, eps, gamma, device, input_channel_num=1, num_actions=125, extra_info_dim=0)
+    ghost = GhostPPO(lr, lmbda_ghost, epochs, eps, gamma, device, input_channel_num=1, num_actions=125, extra_info_dim=0)
     pacman.net.load_state_dict(torch.load('pacman_model.pth', map_location=device))
-    # ghost.net.load_state_dict(torch.load('ghost_model.pth', map_location=device))
+    ghost.net.load_state_dict(torch.load('ghost_model.pth', map_location=device))
     pacman.net.train()
-    # ghost.net.train()
+    ghost.net.train()
 
     pacman_return_list = []
     ghost_return_list = []
@@ -328,7 +328,7 @@ def train():
                 center = state_dict['board_size'] // 2
                 # state, extra = pacman.process_state(state_dict)
                 state = pacman.process_state(state_dict)
-                # extra = ghost.process_state(state_dict)
+                extra = ghost.process_state(state_dict)
                 where = np.zeros((state_dict['board_size'], state_dict['board_size']))
                 where[state_dict['pacman_coord'][0]][state_dict['pacman_coord'][1]] = 1
                 done = False
@@ -370,17 +370,17 @@ def train():
                         else:
                             valid = True
                             print('here-------------------')
-                    # ghost_action = ghost.take_action(extra)
-                    # ghost_action = ghost.demical_to_base5(ghost_action)
+                    ghost_action = ghost.take_action(extra)
+                    ghost_actions = ghost.demical_to_base5(ghost_action)
                     # if i_episode % 5 == 0:
                     #     ghost_action = ai_func(env.game_state())
                     # else:
                     #     ghost_action = [0, 0, 0]
-                    ghost_action = [random.randint(0, 4), random.randint(0, 4), random.randint(0, 4)]
-                    next_state_dict, pacman_reward, ghost_reward, done, _ = env.step(pacmanAction=pacman_action, ghostAction=ghost_action)
+                    # ghost_action = [random.randint(0, 4), random.randint(0, 4), random.randint(0, 4)]
+                    next_state_dict, pacman_reward, ghost_reward, done, _ = env.step(pacmanAction=pacman_action, ghostAction=ghost_actions)
                     # next_state, next_extra = pacman.process_state(next_state_dict)
                     next_state = pacman.process_state(next_state_dict)
-                    # next_extra = ghost.process_state(next_state_dict)
+                    next_extra = ghost.process_state(next_state_dict)
                     extra_reward = 1 if where[next_state_dict['pacman_coord'][0]][next_state_dict['pacman_coord'][1]] == 0 else -1
                     where[next_state_dict['pacman_coord'][0]][next_state_dict['pacman_coord'][1]] = 1
                     if next_state_dict['pacman_coord'][0] == state_dict['pacman_coord'][0] and next_state_dict['pacman_coord'][1] == state_dict['pacman_coord'][1]:
@@ -388,31 +388,31 @@ def train():
                     # if pacman_reward > 40:
                     #     pacman_reward -= 50
                     transition_dict['states'].append(state)
-                    # transition_dict['extras'].append(extra)
+                    transition_dict['extras'].append(extra)
                     transition_dict['pacman_actions'].append(pacman_action)
                     print(pacman_action, torch.argmax(pacman.net(state)[0]).item(), (pacman_reward + extra_reward) * 10)
                     transition_dict['ghost_actions'].append(ghost_action)
                     transition_dict['next_states'].append(next_state)
-                    # transition_dict['next_extras'].append(next_extra)
+                    transition_dict['next_extras'].append(next_extra)
                     transition_dict['pacman_rewards'].append((pacman_reward + extra_reward) * 10)
                     transition_dict['ghost_rewards'].append((sum(ghost_reward) - pacman_reward - extra_reward) * 10)
                     transition_dict['dones'].append(done)
                     state = next_state
                     state_dict = next_state_dict
-                    # extra = next_extra
+                    extra = next_extra
                     pacman_episode_return += pacman_reward
                     ghost_episode_return += sum(ghost_reward)
 
                 pacman_return_list.append(pacman_episode_return)
                 ghost_return_list.append(ghost_episode_return)
-                pacman.update(transition_dict)
-                # ghost.update(transition_dict)
+                # pacman.update(transition_dict)
+                ghost.update(transition_dict)
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
                                       'return': '%.3f' % np.mean(pacman_return_list[-10:])})
                 pbar.update(1)
-            torch.save(pacman.net.state_dict(), 'pacman_model.pth')
-            # torch.save(ghost.net.state_dict(), 'ghost_model.pth')
+            # torch.save(pacman.net.state_dict(), 'pacman_model.pth')
+            torch.save(ghost.net.state_dict(), 'ghost_model.pth')
 
 
     episodes_list = list(range(len(pacman_return_list)))
