@@ -385,8 +385,8 @@ def train():
                     where[next_state_dict['pacman_coord'][0]][next_state_dict['pacman_coord'][1]] = 1
                     if next_state_dict['pacman_coord'][0] == state_dict['pacman_coord'][0] and next_state_dict['pacman_coord'][1] == state_dict['pacman_coord'][1]:
                         extra_reward -= 1
-                    # if pacman_reward > 40:
-                    #     pacman_reward -= 50
+                    if pacman_reward > 40:
+                        pacman_reward -= 50
                     transition_dict['states'].append(state)
                     transition_dict['extras'].append(extra)
                     transition_dict['pacman_actions'].append(pacman_action)
@@ -394,8 +394,10 @@ def train():
                     transition_dict['ghost_actions'].append(ghost_action)
                     transition_dict['next_states'].append(next_state)
                     transition_dict['next_extras'].append(next_extra)
+                    transition_dict['ghost_rewards'].append((sum(ghost_reward)) * 10)
+                    if pacman_reward > 40:
+                        pacman_reward -= 50
                     transition_dict['pacman_rewards'].append((pacman_reward + extra_reward) * 10)
-                    transition_dict['ghost_rewards'].append((sum(ghost_reward) - pacman_reward - extra_reward) * 10)
                     transition_dict['dones'].append(done)
                     state = next_state
                     state_dict = next_state_dict
@@ -405,13 +407,13 @@ def train():
 
                 pacman_return_list.append(pacman_episode_return)
                 ghost_return_list.append(ghost_episode_return)
-                # pacman.update(transition_dict)
+                pacman.update(transition_dict)
                 ghost.update(transition_dict)
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
                                       'return': '%.3f' % np.mean(pacman_return_list[-10:])})
                 pbar.update(1)
-            # torch.save(pacman.net.state_dict(), 'pacman_model.pth')
+            torch.save(pacman.net.state_dict(), 'pacman_model.pth')
             torch.save(ghost.net.state_dict(), 'ghost_model.pth')
 
 
